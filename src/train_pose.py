@@ -7,7 +7,6 @@ logging.getLogger("tensorflow_hub").setLevel(logging.CRITICAL)
 from tensorflow import keras
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import mse
-import segmentation_models as sm
 
 from . import datasets
 from .callbacks import DisplayCallback, tensorboard, checkpoint, lr_schedule
@@ -73,7 +72,7 @@ def main():
 
     model.compile(optimizer=Adam(learning_rate=0.01),
                   loss=mse,
-                  metrics=[sm.metrics.iou_score])
+                  metrics=['mse'])
 
     # model = keras.models.load_model("pose_estimation_tanh.hdf5", custom_objects={"iou_score": sm.metrics.iou_score})
     model.summary()
