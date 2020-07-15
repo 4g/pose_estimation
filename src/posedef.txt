@@ -1,0 +1,97 @@
+CFIT
+
+18 'Leye'
+19 'Reye'
+17 'Nose'
+20 'Lear'
+21 'Rear'
+
+13, R_Shoulder
+14, L_Shoulder
+
+1, R_Ankle
+6, L_Ankle
+
+2, R_Knee
+5, L_Knee
+
+3, R_Hip
+4, L_Hip
+
+7, B_Pelvis
+8, B_Spine
+9, B_Neck
+10, B_Head
+
+12, R_Elbow
+15, L_Elbow
+
+11, R_Wrist
+16, L_Wrist
+
+22 - 43 Hand keypoints
+
+
+
+LIP dataset
+------------
+1, R_Ankle
+2, R_Knee
+3, R_Hip
+4, L_Hip
+5, L_Knee
+6, L_Ankle
+7, B_Pelvis
+8, B_Spine
+9, B_Neck
+10, B_Head
+11, R_Wrist
+12, R_Elbow
+13, R_Shoulder
+14, L_Shoulder
+15, L_Elbow
+16, L_Wrist
+
+COCO
+--------
+['Nose', 'Leye', 'Reye', 'Lear', 'Rear', 'Lsho', 'Rsho', 'Lelb', 'Relb', 'Lwri', 'Rwri', 'Lhip', 'Rhip', 'Lkne', 'Rkne', 'Lank', 'Rank']
+
+MPII == LIP
+-------
+0 - r ankle,
+1 - r knee,
+2 - r hip,
+3 - l hip,
+4 - l knee,
+5 - l ankle,
+6 - pelvis,
+7 - thorax,
+8 - upper neck,
+9 - head top,
+10 - r wrist,
+11 - r elbow,
+12 - r shoulder,
+13 - l shoulder,
+14 - l elbow,
+15 - l wrist
+
+LSP
+----
+Right ankle
+Right knee
+Right hip
+Left hip
+Left knee
+Left ankle
+Right wrist
+Right elbow
+Right shoulder
+Left shoulder
+Left elbow
+Left wrist
+Neck
+Head top
+
+pose_track == coco
+LIP = MPII
+LSP != Anything
