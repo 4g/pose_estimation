@@ -61,14 +61,14 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
     model.save("pose_saved_model")
 
 
-def main(train_ds, val_ds, prec, model_prefix):
+def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     mixed_precision(prec)
 
     train_iter = datasets.get_dataset(train_ds)
     val_iter = datasets.get_dataset(val_ds)
-    train_iter.set_size(100)
-    val_iter.set_size(100)
+    train_iter.set_size(sample_size)
+    val_iter.set_size(sample_size)
 
     num_keypoints = train_iter.get_num_keypoints()
 
@@ -102,6 +102,7 @@ if __name__ == '__main__':
     parser.add_argument("--out", help="output file prefix for modelname", required=False, default="model.")
     parser.add_argument("--train",  help="name of datasets to use for training", required=False, default="lip")
     parser.add_argument("--val", help="name of datasets to use for training", required=False, default="lip_val")
+    parser.add_argument("--sample", help="sample size, give small sample size to test code", required=False, default=None, type=int)
 
     args = parser.parse_args()
-    main(args.train, args.val, args.prec, args.out)
+    main(args.train, args.val, args.prec, args.out, args.sample)

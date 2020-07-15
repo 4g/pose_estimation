@@ -90,6 +90,8 @@ class DisplayCallback(keras.callbacks.Callback):
 
             mask_sum = np.sum(pred_mask, axis=-1)
             mask_sum = mask_sum / np.max(mask_sum)
+            mask_sum = mask_sum.astype(np.float32)
+
             mask_sum = mask_sum * 255
             mask_sum = cv2.cvtColor(mask_sum, cv2.COLOR_GRAY2RGB)
             mask_sum = cv2.resize(mask_sum, image.shape[:2])
