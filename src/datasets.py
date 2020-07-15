@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import cv2
 import numpy as np
+from .settings import POSE_DATASET_DIR
 
 class PoseDataSource:
     KEYPOINTS = 'keypoints'
@@ -226,26 +227,29 @@ class MergedDataSource(PoseDataSource):
 def get_dataset(name):
    datasets = {
     "lsp": (LSP,
-           "/media/apurva/data/images_data/pose_datasets/leeds_sports/lspet_dataset/joints.mat",
-           "/media/apurva/data/images_data/pose_datasets/leeds_sports/lspet_dataset/images/",
+           "leeds_sports/lspet_dataset/joints.mat",
+           "leeds_sports/lspet_dataset/images/",
             ),
 
     "coco": (Coco,
-            '/media/apurva/data/images_data/pose_datasets/coco/annotations/person_keypoints_train2017.json',
-            "/media/apurva/data/images_data/pose_datasets/coco/images/train/",
+            'coco/annotations/person_keypoints_train2017.json',
+            "coco/images/train/",
              ),
 
     "mpii": (MPII,
-           "/media/apurva/data/images_data/pose_datasets/mpii_pose_photos_dataset/annot/trainval.json",
-           "/media/apurva/data/images_data/pose_datasets/mpii_pose_photos_dataset/mpii_human_pose_v1/images",
+           "mpii_pose_photos_dataset/annot/trainval.json",
+           "mpii_pose_photos_dataset/mpii_human_pose_v1/images",
            ),
 
     "lip": (LIP,
-           "/media/apurva/data/images_data/pose_datasets/single_person_coco_hi/TrainVal_pose_annotations/lip_train_set.csv",
-           "/media/apurva/data/images_data/pose_datasets/single_person_coco_hi/TrainVal_images/TrainVal_images/train_images/",
+           "single_person_coco_hi/TrainVal_pose_annotations/lip_train_set.csv",
+           "single_person_coco_hi/TrainVal_images/TrainVal_images/train_images/",
             ),
     }
 
-   ds = datasets[name]
-   dataset = ds[0](ds[1], ds[2])
+   ds_tuple = datasets[name]
+   ds_method = ds_tuple[0]
+   ds_annot = POSE_DATASET_DIR + ds_tuple[1]
+   ds_images = POSE_DATASET_DIR + ds_tuple[2]
+   dataset = ds_method(ds_annot, ds_images)
    return dataset

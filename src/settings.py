@@ -1,0 +1,1 @@
+POSE_DATASET_DIR = "/media/apurva/data/images_data/pose_datasets/"
