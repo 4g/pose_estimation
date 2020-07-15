@@ -2,7 +2,7 @@ from tensorflow import  keras
 import numpy as np
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
-policy = mixed_precision.Policy('float32')
+policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
 mnv2 = keras.applications.mobilenet.MobileNet(alpha=0.5, include_top=False)

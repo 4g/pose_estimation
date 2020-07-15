@@ -1,7 +1,9 @@
 from tensorflow import keras
+import tensorflow as tf
 import cv2
 import numpy as np
 from .generators import PoseDataGenerator
+from datetime import datetime
 
 class Display:
     def __init__(self, maxsize, time):
@@ -49,7 +51,7 @@ class DisplayCallback(keras.callbacks.Callback):
     frequency : display will run after every 'frequency' number of epochs
     """
 
-    def __init__(self, val_data, d_size=600, d_time=1, frequency=1, num_samples=4):
+    def __init__(self, val_data, d_size=600, d_time=1, frequency=1, num_samples=4, writer='cv2'):
         super().__init__()
         self.num_samples = num_samples
         self.val_data = val_data
@@ -59,7 +61,17 @@ class DisplayCallback(keras.callbacks.Callback):
         self.display.on()
         self.callcount = 0
         self.frequency = frequency
-    
+        self.tb_writer = self.get_tb_writer()
+
+    def get_tb_writer(self):
+        logdir = "logs/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        file_writer_cm = tf.summary.create_file_writer(logdir + '/cm')
+        return file_writer_cm
+
+    def tb_write(self, img, step):
+        with self.tb_writer.as_default():
+            tf.summary.image("Training data", img, step=step)
+
     def draw_pose(self, image, keypoints, color=(255, 255, 255), radius=5):
         for keypoint in keypoints:
             x, y, s = keypoint
@@ -105,16 +117,13 @@ class DisplayCallback(keras.callbacks.Callback):
             outimages.append(outimage)
 
         outimage = np.vstack(outimages)
-        cv2.putText(outimage, str(number), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        self.display.show(outimage, "zorro")
+        outimage = np.expand_dims(outimage, 0)
+        #cv2.putText(outimage, str(number), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        #self.display.show(outimage, "zorro")
+        self.tb_write(outimage, number)
 
-    def on_batch_end(self, epoch, logs=None):
-        if epoch//3 % self.frequency == 0:
-            self.sample_index += 1
-            self.samples = self.val_data[self.sample_index%len(self.val_data)]
-
-        if epoch % self.frequency == 0:
-            self.draw(epoch)
+    def on_epoch_end(self, epoch, logs=None):
+        self.draw(epoch)
 
 def lr_schedule():
     def lrs(epoch):
@@ -133,10 +142,7 @@ def checkpoint(filepath):
                                         verbose=1)
 
 
-
-
 def tensorboard():
-    from datetime import datetime
     logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
     return tensorboard_callback

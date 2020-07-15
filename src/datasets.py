@@ -245,7 +245,13 @@ def get_dataset(name):
            "single_person_coco_hi/TrainVal_pose_annotations/lip_train_set.csv",
            "single_person_coco_hi/TrainVal_images/TrainVal_images/train_images/",
             ),
-    }
+
+    "lip_val": (LIP,
+           "single_person_coco_hi/TrainVal_pose_annotations/lip_val_set.csv",
+           "single_person_coco_hi/TrainVal_images/TrainVal_images/val_images/",
+           ),
+
+   }
 
    ds_tuple = datasets[name]
    ds_method = ds_tuple[0]
