@@ -51,7 +51,7 @@ class DisplayCallback(keras.callbacks.Callback):
     frequency : display will run after every 'frequency' number of epochs
     """
 
-    def __init__(self, val_data, d_size=600, d_time=1, frequency=1, num_samples=4, writer='cv2'):
+    def __init__(self, val_data, d_size=600, d_time=1, frequency=1, num_samples=4):
         super().__init__()
         self.num_samples = num_samples
         self.val_data = val_data

@@ -17,7 +17,7 @@ def mixed_precision(prec):
     policy = mixed_precision.Policy(prec)
     mixed_precision.set_policy(policy)
 
-def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs, display, model_path):
+def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs, model_path):
     mask_shape = model.output.shape[1:3]
     mask_width, mask_height = mask_shape[0], mask_shape[1]
     print("Output image shape", mask_shape)
@@ -44,11 +44,10 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
                  lr_schedule(),
                  tensorboard()]
 
-    if display:
-        callbacks.append(DisplayCallback(train_data,
-                        d_size=800,
-                        d_time=50,
-                        frequency=250))
+    callbacks.append(DisplayCallback(train_data,
+                    d_size=800,
+                    d_time=50,
+                    frequency=250))
 
 
     model.fit(x=train_data,
@@ -62,7 +61,7 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
     model.save("pose_saved_model")
 
 
-def main(train_ds, val_ds, disp, prec, model_prefix):
+def main(train_ds, val_ds, prec, model_prefix):
 
     mixed_precision(prec)
 
@@ -94,19 +93,15 @@ def main(train_ds, val_ds, disp, prec, model_prefix):
           batch_size=batch_size,
           model=model,
           epochs=300,
-          display=disp,
           model_path=model_filename)
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--disp", help="true/false", required=False, default=False)
     parser.add_argument("--prec", help="mixed precision mode (mixed_float16 / float32)", required=False, default="mixed_float16")
     parser.add_argument("--out", help="output file prefix for modelname", required=False, default="model.")
     parser.add_argument("--train",  help="name of datasets to use for training", required=False, default="lip")
     parser.add_argument("--val", help="name of datasets to use for training", required=False, default="lip_val")
 
     args = parser.parse_args()
-    main(args.train, args.val, args.disp, args.prec, args.out)
-
-
+    main(args.train, args.val, args.prec, args.out)
