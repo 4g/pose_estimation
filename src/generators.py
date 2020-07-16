@@ -1,6 +1,7 @@
 from tensorflow import keras
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 
 class SegmentationDataGenerator(keras.utils.Sequence):
@@ -106,34 +107,147 @@ class PoseDataGenerator(keras.utils.Sequence):
                     continue
 
                 x, y = int(x), int(y)
+                x = min(self.img_height, x)
+                y = min(self.img_width, y)
+
                 scaled_x = int((x/width)*self.mask_width)
                 scaled_y = int((y/height)*self.mask_height)
-
-                left_corner_y = max(scaled_y - self.disc_size, 0)
-                left_corner_x = max(scaled_x - self.disc_size, 0)
 
                 offset_x = (x - scaled_x * width/self.mask_width) / offset_x_max
                 offset_y = (y - scaled_y * height/self.mask_height) / offset_y_max
 
-                sub_mask_shape = (keypoint_mask[left_corner_y: left_corner_y + 2 * self.disc_size + 1,
-                              left_corner_x: left_corner_x + 2 * self.disc_size + 1,
-                              index]).shape
+                # print(x, y, scaled_x, scaled_y, offset_x, offset_y)
 
-                keypoint_mask[left_corner_y: left_corner_y + 2 * self.disc_size + 1,
-                              left_corner_x: left_corner_x + 2 * self.disc_size + 1,
-                              index] = self.gaussian[:sub_mask_shape[0], :sub_mask_shape[1]]
+                left_space_x = min(scaled_x, self.disc_size)
+                left_space_y = min(scaled_y, self.disc_size)
 
-                keypoint_mask[left_corner_y: left_corner_y + 2 * self.disc_size + 1,
-                              left_corner_x: left_corner_x + 2 * self.disc_size + 1,
+                right_space_x = min(self.mask_width - scaled_x, self.disc_size + 1)
+                right_space_y = min(self.mask_height - scaled_y, self.disc_size + 1)
+
+                ## debug start
+                # y_start = scaled_y - left_space_y
+                # x_start = scaled_x - left_space_x
+                # y_end = scaled_y + right_space_y
+                # x_end = scaled_x + right_space_x
+                #
+                # print("x", x, scaled_x, offset_x, left_space_x, right_space_x, x_start, x_end)
+                #
+                # print("y", y, scaled_y, offset_y, left_space_y, right_space_y, y_start, y_end)
+                #
+                # print(keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
+                #               scaled_x - left_space_x: scaled_x + right_space_x,
+                #               index].shape)
+                #
+                # print(self.gaussian[self.disc_size - left_space_y:self.disc_size + right_space_y,
+                #                                      self.disc_size - left_space_x:self.disc_size + right_space_x].shape)
+                # ## debug end
+
+                keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
+                              scaled_x - left_space_x: scaled_x + right_space_x,
+                              index] = self.gaussian[self.disc_size - left_space_y:self.disc_size + right_space_y,
+                                                     self.disc_size - left_space_x:self.disc_size + right_space_x]
+
+                keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
+                              scaled_x - left_space_x: scaled_x + right_space_x,
                               index + self.num_keypoints] = offset_x
 
-                keypoint_mask[left_corner_y: left_corner_y + 2 * self.disc_size + 1,
-                                left_corner_x: left_corner_x + 2 * self.disc_size + 1,
+                keypoint_mask[scaled_y - left_space_y: scaled_y + left_space_y + 1,
+                              scaled_x - left_space_x: scaled_x + right_space_x + 1,
                                 index + 2 * self.num_keypoints] = offset_y
 
 
-
         return keypoint_mask
+
+    def get_img_mask(self, sample):
+        img = self.poseiterator.get_image(sample)
+        keypoints = list(self.poseiterator.get_keypoints(sample))
+
+        img, keypoints = self.pad(img, keypoints, self.img_width, self.img_height)
+        keypoint_mask = self.make_keypoint_mask(keypoints, self.img_width, self.img_height)
+
+        # debug start
+        # pred = np.asarray(self.get_keypoints_from_mask(keypoint_mask, self.img_width, self.img_height))[:, :2]
+        # orig = np.asarray(keypoints[0])[:, :2]
+        # orig[orig == 'nan'] = 0
+        # orig = orig.astype(np.int32)
+        # print("orig", orig)
+        # print("pred", pred)
+        # diff = (orig - pred).astype(np.int32)
+        # print("diff", diff)
+        # debug end
+
+        img = self.preprocess_image(img, self.img_width, self.img_height)
+
+        return img, keypoint_mask
+
+    def draw_pose(self, image, keypoints, color=(0, 255, 0), radius=4):
+        for keypoint in keypoints:
+            x, y, s = keypoint
+            x = int(x)
+            y = int(y)
+            cv2.circle(image, (x, y), radius, color, -1)
+        return image
+
+    def __len__(self):
+        return int(np.ceil(len(self.data) / float(self.batch_size)))
+
+    def __getitem__(self, idx):
+        batch = self.data[idx * self.batch_size: (idx + 1) * self.batch_size]
+
+        # Create an empty batch of images and mask each
+        imgb = np.zeros((self.batch_size, self.img_width, self.img_height, 3), dtype=np.float32)
+        maskb = np.zeros((self.batch_size, self.mask_width, self.mask_height, self.num_keypoints*3), dtype=np.float32)
+
+        # Read filenames and fill the batch
+        for index, sample in enumerate(batch):
+            img, kp = self.get_img_mask(sample)
+            imgb[index] = img
+            maskb[index] = kp
+
+        return imgb, maskb
+
+    def preprocess_image(self, img, width, height):
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, (width, height))
+        img = img / 255.
+        return img
+
+    def sample(self, i=0):
+        return self[i]
+
+    def on_epoch_end(self):
+        if self.shuffle:
+            np.random.shuffle(self.data)
+
+    @staticmethod
+    def get_keypoints_from_mask(mask, width, height):
+        num_keypoints = mask.shape[-1]//3
+        pred_keypoints = []
+
+        offset_x_max = width / mask.shape[0]
+        offset_y_max = height / mask.shape[1]
+
+        for index in range(num_keypoints):
+            frame = mask[:, :, index]
+            keypoint = np.unravel_index(np.argmax(frame, axis=None), frame.shape)
+            y, x = keypoint
+
+            x_scaled = int(x*(width / mask.shape[0]))
+            y_scaled = int(y*(width / mask.shape[1]))
+
+            score = frame[keypoint]
+            frame = mask[:, :, index + num_keypoints]
+            offset_x = frame[keypoint]
+
+            frame = mask[:, :, index + 2 * num_keypoints]
+            offset_y = frame[keypoint]
+
+            pred_x = int(x_scaled + offset_x * offset_x_max)
+            pred_y = int(y_scaled + offset_y * offset_y_max)
+
+            pred_keypoints.append([pred_x, pred_y, score])
+
+        return pred_keypoints
 
     @staticmethod
     def crop(image, width, height):
@@ -194,100 +308,18 @@ class PoseDataGenerator(keras.utils.Sequence):
 
         return padded_image, all_keypoints
 
-    def get_img_mask(self, sample):
-        img = self.poseiterator.get_image(sample)
-        keypoints = list(self.poseiterator.get_keypoints(sample))
-
-        img, keypoints = self.pad(img, keypoints, self.img_width, self.img_height)
-        keypoint_mask = self.make_keypoint_mask(keypoints, self.img_width, self.img_height)
-
-        img = self.preprocess_image(img, self.img_width, self.img_height)
-
-        return img, keypoint_mask
-
-    def draw_pose(self, image, keypoints, color=(0, 255, 0), radius=4):
-        for keypoint in keypoints:
-            x, y, s = keypoint
-            x = int(x)
-            y = int(y)
-            cv2.circle(image, (x, y), radius, color, -1)
-        return image
-
-    def __len__(self):
-        return int(np.ceil(len(self.data) / float(self.batch_size)))
-
-    def __getitem__(self, idx):
-        batch = self.data[idx * self.batch_size: (idx + 1) * self.batch_size]
-
-        # Create an empty batch of images and mask each
-        imgb = np.zeros((self.batch_size, self.img_width, self.img_height, 3), dtype=np.float32)
-        maskb = np.zeros((self.batch_size, self.mask_width, self.mask_height, self.num_keypoints*3), dtype=np.float32)
-
-        # Read filenames and fill the batch
-        for index, sample in enumerate(batch):
-            img, kp = self.get_img_mask(sample)
-            imgb[index] = img
-            maskb[index] = kp
-
-        return imgb, maskb
-
-    def preprocess_image(self, img, width, height):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img, (width, height))
-        img = img / 255.
-        return img
-
-    def sample(self, i=0):
-        return self[i]
-
-    def on_epoch_end(self):
-        if self.shuffle:
-            np.random.shuffle(self.data)
-
-
-    @staticmethod
-    def get_keypoints_from_mask(mask, width, height):
-        num_keypoints = mask.shape[-1]//3
-        pred_keypoints = []
-
-        offset_x_max = width / mask.shape[0]
-        offset_y_max = height / mask.shape[1]
-
-        for index in range(num_keypoints):
-            frame = mask[:, :, index]
-            keypoint = np.unravel_index(np.argmax(frame, axis=None), frame.shape)
-            y, x = keypoint
-
-            x_scaled = int(x*(width / mask.shape[0]))
-            y_scaled = int(y*(width / mask.shape[1]))
-
-            score = frame[keypoint]
-            frame = mask[:, :, index + num_keypoints]
-            offset_x = frame[keypoint]
-
-            frame = mask[:, :, index + 2 * num_keypoints]
-            offset_y = frame[keypoint]
-
-            # print(offset_x, offset_y)
-
-            x = int(x_scaled + offset_x * offset_x_max)
-            y = int(y_scaled + offset_y * offset_y_max)
-
-            pred_keypoints.append([x, y, score])
-
-        return pred_keypoints
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-
+    parser.add_argument("--dataset", required=False, default="lip")
     args = parser.parse_args()
+    ds = args.dataset
 
     from . import datasets
 
-    train_iter = datasets.get_dataset("lip")
-    train_iter.set_size(1000)
+    train_iter = datasets.get_dataset(args.dataset)
 
     num_keypoints = train_iter.get_num_keypoints()
     print(num_keypoints)
@@ -306,13 +338,13 @@ if __name__ == "__main__":
                                     mask_width=mask_width,
                                     mask_height=mask_height,
                                     batch_size=batch_size,
-                                    shuffle=True)
+                                    shuffle=False)
 
-    for imgb, maskb in train_data:
+    for imgb, maskb in tqdm(train_data):
         img = imgb[0]
         mask = maskb[0]
         keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
-        print(keypoints)
+
         img = train_data.draw_pose(img, keypoints)
         cv2.imshow("img", img)
         cv2.waitKey(-1)

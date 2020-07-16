@@ -92,7 +92,7 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
           img_height=img_height,
           batch_size=batch_size,
           model=model,
-          epochs=300,
+          epochs=100,
           model_path=model_filename)
 
 if __name__ == '__main__':

@@ -188,18 +188,17 @@ class LIP(PoseDataSource):
         for elem in self.raw_data:
             image_id = elem[0]
             keypoints = elem[1:]
+            keypoints = np.asarray(keypoints, dtype=np.float32)
+            keypoints = [self.to_int(x) for x in keypoints]
             keypoints = np.reshape(keypoints, (16, 3))
-            keypoints = [[self.to_int(x), self.to_int(y), self.to_int(s)] for x, y, s in keypoints]
-            keypoints = np.asarray(keypoints)
-
             self.add_image_id(image_id)
             self.add_annotation(image_id, keypoints)
             self.set_filename(image_id, image_id)
 
     def to_int(self, x):
-        if x == 'nan':
-            return x
-        return int(x)
+        if np.isnan(x):
+            return -1
+        return float(x)
 
 class LSP(PoseDataSource):
     def __init__(self, annotation_path, images_dir):
@@ -210,10 +209,9 @@ class LSP(PoseDataSource):
         annotations = loadmat(self.annotation_path)
         self.raw_data = annotations['joints']
         num_samples = self.raw_data.shape[-1]
-        for index in range(1, num_samples):
+        for index in range(num_samples):
             joints = self.raw_data[:,:,index]
-            image_id = "im{index}.jpg".format(index=str(index).zfill(5))
-
+            image_id = "im{index}.jpg".format(index=str(index + 1).zfill(5))
             self.add_image_id(image_id)
             self.add_annotation(image_id, joints)
             self.set_filename(image_id, image_id)
