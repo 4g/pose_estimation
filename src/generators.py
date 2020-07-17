@@ -209,7 +209,8 @@ class PoseDataGenerator(keras.utils.Sequence):
     def preprocess_image(self, img, width, height):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (width, height))
-        img = img / 255.
+        img = img / 127.5
+        img -= 1.
         return img
 
     def sample(self, i=0):
@@ -344,7 +345,8 @@ if __name__ == "__main__":
         img = imgb[0]
         mask = maskb[0]
         keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
-
+        img = (img + 1)*127
+        img = img.astype(np.uint8)
         img = train_data.draw_pose(img, keypoints)
         cv2.imshow("img", img)
         cv2.waitKey(-1)

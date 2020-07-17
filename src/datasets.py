@@ -4,6 +4,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 from .settings import POSE_DATASET_DIR
+import os
+from scipy.io import loadmat
+
 
 class PoseDataSource:
     KEYPOINTS = 'keypoints'
@@ -45,6 +48,10 @@ class PoseDataSource:
 
     def has(self, image_id):
         return image_id in self.data_map
+
+    def remove(self, image_id):
+        if self.has(image_id):
+            del self.data_map[image_id]
 
     def get_keypoints(self, image_id):
         sample = self.get_sample(image_id)
@@ -118,7 +125,6 @@ class Coco(PoseDataSource):
         super().__init__(annotation_path, images_dir)
 
     def create_data_map(self):
-        data_map = {}
         self.raw_data = json.load(open(self.annotation_path))
 
         for elem in self.raw_data[Coco.ANNO]:
@@ -216,6 +222,81 @@ class LSP(PoseDataSource):
             self.add_annotation(image_id, joints)
             self.set_filename(image_id, image_id)
 
+class CROWD(PoseDataSource):
+    IMGS = 'images'
+    IMAGE_ID = 'image_id'
+    ANNO = 'annotations'
+
+    def __init__(self, annotation_path, images_dir):
+        super().__init__(annotation_path, images_dir)
+
+    def create_data_map(self):
+        self.raw_data = json.load(open(self.annotation_path))
+
+        for elem in self.raw_data[Coco.ANNO]:
+            image_id = elem[self.IMAGE_ID]
+            keypoints = elem[Coco.KEYPOINTS]
+            keypoints = np.reshape(keypoints, (14,3))
+            self.add_image_id(image_id)
+            self.add_annotation(image_id, keypoints)
+
+        for elem in self.raw_data[Coco.IMGS]:
+            image_id = elem['id']
+            filename = elem['file_name']
+            if self.has(image_id):
+                self.set_filename(image_id, filename)
+
+class SURREAL(PoseDataSource):
+    def __init__(self, annotation_path, images_dir):
+        super().__init__(annotation_path, images_dir)
+
+    def create_data_map(self):
+        mats = set()
+        mp4s = set()
+        for root, directories, files in os.walk(self.annotation_path):
+            for file in files:
+                file_ext = file.split(".")[1]
+                if file_ext == 'mp4':
+                    mp4s.add((root, file))
+
+        for root, file in mp4s:
+            annot = file.replace(".mp4", "_info.mat")
+            path = Path(root)
+            annotation = loadmat(str(path/annot))
+            joints = annotation['joints2D']
+
+class Posetrack(PoseDataSource):
+    IMGS = 'images'
+    IMAGE_ID = 'image_id'
+    ANNO = 'annotations'
+
+    def __init__(self, annotation_path, images_dir):
+        super().__init__(annotation_path, images_dir)
+
+    def create_data_map(self):
+        import glob
+        x = 0
+        for f in glob.glob(self.annotation_path + "*.json"):
+            annotation = json.load(open(f))
+            x += len(annotation[Coco.ANNO])
+            for elem in annotation[Coco.ANNO]:
+                image_id = elem[self.IMAGE_ID]
+                keypoints = elem[Coco.KEYPOINTS]
+                keypoints = np.reshape(keypoints, (17, 3))
+                self.add_image_id(image_id)
+                self.add_annotation(image_id, keypoints)
+
+            for elem in annotation[Coco.IMGS]:
+                # print(elem)
+                image_id = elem['id']
+                filename = elem['file_name']
+                if self.has(image_id):
+                    self.set_filename(image_id, filename)
+                    path = self.get_filepath(image_id)
+                    if not os.path.exists(path):
+                        self.remove(image_id)
+
+        print("Num images", len(self.data_map), x)
 
 class MergedDataSource(PoseDataSource):
     def __init__(self, annotation_path, images_dir):
@@ -235,20 +316,33 @@ def get_dataset(name):
              ),
 
     "mpii": (MPII,
-           "mpii_pose_photos_dataset/annot/trainval.json",
-           "mpii_pose_photos_dataset/mpii_human_pose_v1/images",
+           "mpii_pose_photos_dataset/trainval.json",
+           "mpii_pose_photos_dataset/images",
            ),
 
     "lip": (LIP,
            "single_person_coco_hi/TrainVal_pose_annotations/lip_train_set.csv",
-           "single_person_coco_hi/TrainVal_images/TrainVal_images/train_images/",
+           "single_person_coco_hi/TrainVal_images/train_images/",
             ),
 
     "lip_val": (LIP,
            "single_person_coco_hi/TrainVal_pose_annotations/lip_val_set.csv",
-           "single_person_coco_hi/TrainVal_images/TrainVal_images/val_images/",
+           "single_person_coco_hi/TrainVal_images/val_images/",
            ),
 
+    "crowd": (CROWD,
+               "crowd_pose/annotations/json/crowdpose_train.json",
+               "crowd_pose/images",
+               ),
+
+    "surreal": (SURREAL,
+                "surreal/dataset/SURREAL/data/cmu/train/run1/",
+                "surreal/dataset/SURREAL/data/cmu/train/run1/"
+                ),
+    "posetrack" : (Posetrack,
+                "posetrack/annotations/train/",
+                "posetrack/"
+    )
    }
 
    ds_tuple = datasets[name]

@@ -85,7 +85,8 @@ class DisplayCallback(keras.callbacks.Callback):
             image, mask = images[index], masks[index]
             pred_mask = self.model.predict(np.expand_dims((image), axis=0))[0]
 
-            image = image * 255
+            image = (image + 1) * 127.5
+            image = image.astype(np.uint8)
             width, height = image.shape[0], image.shape[1]
 
             mask_sum = np.sum(pred_mask, axis=-1)

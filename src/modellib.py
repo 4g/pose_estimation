@@ -6,7 +6,7 @@ def create_pose_model(img_width, img_height, num_keypoints):
     backbone_model = keras.applications.mobilenet.MobileNet
     backbone = backbone_model(input_shape=(img_width, img_height, 3),
                               include_top=False,
-                              alpha=0.25)
+                              alpha=0.5)
 
     keypoints_conv = keras.layers.Conv2D(filters=num_keypoints,
                                          kernel_size=1,

@@ -7,18 +7,18 @@ import numpy as np
 
 def test_pose(video, model_path):
     cam = camera.Camera(video)
-    model = keras.models.load_model(model_path, custom_objects={"iou_score":sm.metrics.iou_score})
+    model = keras.models.load_model(model_path)
 
     cam.start()
     while True:
         frame, count = cam.get()
         frame, _ = PoseDataGenerator.pad(frame, [],  480, 480)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        image = frame / 255.0
+        image = frame / 127.5 - 1
         image = np.expand_dims(image, axis=0)
         output = model.predict(image)[0]
 
-        compressed_output = output[:, :, 25]
+        compressed_output = np.sum(output[:,:,:16], axis=-1)
         print(np.asarray(compressed_output*32, np.int32))
         compressed_output = compressed_output / np.max(compressed_output)
 

@@ -84,7 +84,7 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     model.summary()
 
-    model_filename = model_prefix + "{epoch:02d}-{val_loss:.2f}.hdf5"
+    model_filename = model_prefix + "{epoch:02d}-{val_loss:.5f}.hdf5"
 
     train(train_iter=train_iter,
           val_iter=val_iter,
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--prec", help="mixed precision mode (mixed_float16 / float32)", required=False, default="mixed_float16")
-    parser.add_argument("--out", help="output file prefix for modelname", required=False, default="model.")
+    parser.add_argument("--out", help="output file prefix for modelname", required=False, default="runs/model.")
     parser.add_argument("--train",  help="name of datasets to use for training", required=False, default="lip")
     parser.add_argument("--val", help="name of datasets to use for training", required=False, default="lip_val")
     parser.add_argument("--sample", help="sample size, give small sample size to test code", required=False, default=None, type=int)
