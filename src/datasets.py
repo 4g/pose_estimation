@@ -20,7 +20,7 @@ class PoseDataSource:
         self.num_keypoints = None
         self.data_map = {}
         self.create_data_map()
-        self.images_ids = list(self.data_map.keys())
+        self.images_ids = sorted(list(self.data_map.keys()))
         self.itersize = len(self.images_ids)
 
         # Check and autoset number of keypoints if not already set
@@ -56,14 +56,16 @@ class PoseDataSource:
     def get_keypoints(self, image_id):
         sample = self.get_sample(image_id)
         instances = sample[PoseDataSource.ANNOTATIONS]
+        keypoints = []
         for instance in instances:
-            keypoints = instance[PoseDataSource.KEYPOINTS]
-            yield keypoints
+            instance_keypoints = instance[PoseDataSource.KEYPOINTS]
+            keypoints.append(instance_keypoints)
+        return keypoints
 
     def get_image(self, image_id):
-        return cv2.imread(str(self.get_filepath(image_id)))
+        return cv2.imread(str(self.get_imgpath(image_id)))
 
-    def get_filepath(self, image_id):
+    def get_imgpath(self, image_id):
         return self.images_dir / self.data_map[image_id][self.FILE_PATH]
 
     def iter_dataset(self, size=None):
@@ -84,8 +86,16 @@ class PoseDataSource:
     def set_filename(self, image_id, filename):
         self.data_map[image_id][PoseDataSource.FILE_PATH] = filename
 
+    def clean_keypoint(self, keypoint):
+        x, y, v = keypoint
+        x = float(x)
+        y = float(y)
+        v = float(v)
+        return [x, y, v]
+
     def add_annotation(self, image_id, keypoints):
-        annotation = {PoseDataSource.KEYPOINTS:keypoints}
+        clean_keypoints = [self.clean_keypoint(kp) for kp in keypoints]
+        annotation = {PoseDataSource.KEYPOINTS: clean_keypoints}
         self.data_map[image_id][PoseDataSource.ANNOTATIONS].append(annotation)
 
     def get_sample(self, image_id):
@@ -109,7 +119,7 @@ class PoseDataSource:
 
     def set_num_keypoints(self, value=None):
         if value is None:
-            kp = next(self.get_keypoints(self.images_ids[0]))
+            kp = self.get_keypoints(self.images_ids[0])[0]
             value = len(kp)
         self.num_keypoints = value
 
@@ -275,10 +285,8 @@ class Posetrack(PoseDataSource):
 
     def create_data_map(self):
         import glob
-        x = 0
         for f in glob.glob(self.annotation_path + "*.json"):
             annotation = json.load(open(f))
-            x += len(annotation[Coco.ANNO])
             for elem in annotation[Coco.ANNO]:
                 image_id = elem[self.IMAGE_ID]
                 keypoints = elem[Coco.KEYPOINTS]
@@ -286,65 +294,132 @@ class Posetrack(PoseDataSource):
                 self.add_image_id(image_id)
                 self.add_annotation(image_id, keypoints)
 
+
             for elem in annotation[Coco.IMGS]:
                 # print(elem)
                 image_id = elem['id']
                 filename = elem['file_name']
                 if self.has(image_id):
                     self.set_filename(image_id, filename)
-                    path = self.get_filepath(image_id)
+                    path = self.get_imgpath(image_id)
                     if not os.path.exists(path):
                         self.remove(image_id)
 
-        print("Num images", len(self.data_map), x)
 
 class MergedDataSource(PoseDataSource):
     def __init__(self, annotation_path, images_dir):
         super().__init__(annotation_path, images_dir)
 
+    def create_data_map(self):
+        import glob
+        for annotation_path in glob.glob(self.annotation_path + "*.json"):
+            annotations = json.load(open(annotation_path))
+            for image_path in annotations:
+                instances = annotations[image_path]
+                image_id = image_path
+                self.add_image_id(image_id)
+                for instance in instances:
+                    self.add_annotation(image_id, instance)
+                self.set_filename(image_id, image_path)
+
+class Penn(PoseDataSource):
+    def __init__(self, annotation_path, images_dir):
+        super().__init__(annotation_path, images_dir)
+
+    def create_data_map(self):
+        from scipy.io import loadmat
+        import glob
+        for f in glob.glob(self.annotation_path + "*.mat"):
+            annotation = loadmat(f)
+            video_index = Path(f).name.split(".")[0]
+            all_x = annotation['x']
+            all_y = annotation['y']
+            all_visibility = annotation['visibility']
+            num_frames = int(annotation['nframes'])
+
+            for index in range(num_frames):
+                x = all_x[index]
+                y = all_y[index]
+                visibility = all_visibility[index]
+                image_name =  '{0:06}'.format(index + 1) + ".jpg"
+                image_path = video_index + "/" + image_name
+                keypoints = list(zip(x, y, visibility))
+                keypoints = np.asarray(keypoints, dtype=np.float32)
+
+                image_id = image_path
+                self.add_image_id(image_id)
+                self.add_annotation(image_id, keypoints)
+                self.set_filename(image_id, image_id)
+
+
+datasets = {
+"lsp": (LSP,
+       "leeds_sports/lspet_dataset/joints.mat",
+       "leeds_sports/lspet_dataset/images/",
+        ),
+
+"coco": (Coco,
+        'coco/annotations/person_keypoints_train2017.json',
+        "coco/images/train/",
+         ),
+"coco_val":(Coco,
+        'coco/annotations/person_keypoints_val2017.json',
+        "coco/images/val/",
+         ),
+
+"mpii": (MPII,
+       "mpii_pose_photos_dataset/trainval.json",
+       "mpii_pose_photos_dataset/images",
+       ),
+
+"lip": (LIP,
+       "single_person_coco_hi/TrainVal_pose_annotations/lip_train_set.csv",
+       "single_person_coco_hi/TrainVal_images/train_images/",
+        ),
+
+"lip_val": (LIP,
+       "single_person_coco_hi/TrainVal_pose_annotations/lip_val_set.csv",
+       "single_person_coco_hi/TrainVal_images/val_images/",
+       ),
+
+"crowd": (CROWD,
+           "crowd_pose/annotations/json/crowdpose_train.json",
+           "crowd_pose/images/",
+           ),
+
+"crowd_val": (CROWD,
+         "crowd_pose/annotations/json/crowdpose_val.json",
+         "crowd_pose/images/",
+         ),
+
+# "surreal": (SURREAL,
+#             "surreal/dataset/SURREAL/data/cmu/train/run1/",
+#             "surreal/dataset/SURREAL/data/cmu/train/run1/"
+#             ),
+
+"posetrack": (Posetrack,
+            "posetrack/annotations/train/",
+            "posetrack/"
+            ),
+
+# "posetrack_val": (Posetrack,
+#              "posetrack/annotations/val/",
+#              "posetrack/"
+#              ),
+
+"penn": (Penn,
+          "Penn_Action/labels/",
+          "Penn_Action/frames/"
+          ),
+
+"combo":(MergedDataSource,
+         "merged/",
+         "merged/"),
+
+}
+
 
 def get_dataset(name):
-   datasets = {
-    "lsp": (LSP,
-           "leeds_sports/lspet_dataset/joints.mat",
-           "leeds_sports/lspet_dataset/images/",
-            ),
-
-    "coco": (Coco,
-            'coco/annotations/person_keypoints_train2017.json',
-            "coco/images/train/",
-             ),
-
-    "mpii": (MPII,
-           "mpii_pose_photos_dataset/trainval.json",
-           "mpii_pose_photos_dataset/images",
-           ),
-
-    "lip": (LIP,
-           "single_person_coco_hi/TrainVal_pose_annotations/lip_train_set.csv",
-           "single_person_coco_hi/TrainVal_images/train_images/",
-            ),
-
-    "lip_val": (LIP,
-           "single_person_coco_hi/TrainVal_pose_annotations/lip_val_set.csv",
-           "single_person_coco_hi/TrainVal_images/val_images/",
-           ),
-
-    "crowd": (CROWD,
-               "crowd_pose/annotations/json/crowdpose_train.json",
-               "crowd_pose/images",
-               ),
-
-    "surreal": (SURREAL,
-                "surreal/dataset/SURREAL/data/cmu/train/run1/",
-                "surreal/dataset/SURREAL/data/cmu/train/run1/"
-                ),
-    "posetrack" : (Posetrack,
-                "posetrack/annotations/train/",
-                "posetrack/"
-    )
-   }
-
    ds_tuple = datasets[name]
    ds_method = ds_tuple[0]
    ds_annot = POSE_DATASET_DIR + ds_tuple[1]
