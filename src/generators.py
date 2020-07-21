@@ -2,7 +2,8 @@ from tensorflow import keras
 import numpy as np
 import cv2
 from tqdm import tqdm
-
+import random
+import albumentations as A
 
 class SegmentationDataGenerator(keras.utils.Sequence):
     """
@@ -22,6 +23,7 @@ class SegmentationDataGenerator(keras.utils.Sequence):
         self.mask_height = mask_height
         self.file_names = filenames
         self.shuffle = shuffle
+
 
     def __len__(self):
         return int(np.ceil(len(self.file_names) / float(self.batch_size)))
@@ -83,6 +85,21 @@ class PoseDataGenerator(keras.utils.Sequence):
         self.disc_size = max(int(max(np.sqrt(self.mask_width)/2, 1)), 3)
         self.gaussian = self.get_gaussian(self.disc_size*2 + 1)
 
+        random.seed(7)
+        transform = A.Compose([
+            A.ShiftScaleRotate(p=0.5),
+            A.HorizontalFlip(p=0.5),
+            A.CenterCrop(height=352, width=352, p=0.5),
+            A.OneOf([
+                A.HueSaturationValue(p=0.5),
+                A.RGBShift(p=0.7)
+            ], p=1),
+            A.RandomBrightnessContrast(p=0.5)
+        ],
+            keypoint_params=A.KeypointParams(format='xy'),
+        )
+        self.transform = transform
+
         print("Disc size for gaussian:", self.disc_size)
 
 
@@ -103,7 +120,8 @@ class PoseDataGenerator(keras.utils.Sequence):
         for keypoints in all_keypoints:
             for index, keypoint in enumerate(keypoints):
                 x, y, v = keypoint
-                if v == 'nan':
+
+                if v == -1 or x > self.img_height or y > self.img_width or x <= 0.0 or y <= 0.0:
                     continue
 
                 x, y = int(x), int(y)
@@ -162,8 +180,14 @@ class PoseDataGenerator(keras.utils.Sequence):
         img = self.poseiterator.get_image(sample)
         keypoints = list(self.poseiterator.get_keypoints(sample))
 
+
+        # transformed = self.transform(image=img, keypoints=keypoints[0])
+        # img = transformed['image']
+        # keypoints = [transformed['keypoints']]
+
         img, keypoints = self.pad(img, keypoints, self.img_width, self.img_height)
         keypoint_mask = self.make_keypoint_mask(keypoints, self.img_width, self.img_height)
+
 
         # debug start
         # pred = np.asarray(self.get_keypoints_from_mask(keypoint_mask, self.img_width, self.img_height))[:, :2]
@@ -293,8 +317,7 @@ class PoseDataGenerator(keras.utils.Sequence):
                                           pad_height,
                                           pad_width,
                                           pad_width,
-                                          cv2.BORDER_CONSTANT,
-                                          value=(0, 0, 0))
+                                          cv2.BORDER_REPLICATE)
 
         padded_image = cv2.resize(padded_image, (width, height))
         for index in range(len(all_keypoints)):
@@ -321,6 +344,7 @@ if __name__ == "__main__":
     from . import datasets
 
     train_iter = datasets.get_dataset(args.dataset)
+    # train_iter.set_size(10)
 
     num_keypoints = train_iter.get_num_keypoints()
     print(num_keypoints)
@@ -329,8 +353,8 @@ if __name__ == "__main__":
     mask_width, mask_height = mask_shape[0], mask_shape[1]
     print("Output image shape", mask_shape)
 
-    img_width = 480
-    img_height = 480
+    img_width = 352
+    img_height = 352
     batch_size = 1
 
     train_data = PoseDataGenerator(train_iter,
@@ -344,6 +368,7 @@ if __name__ == "__main__":
     for imgb, maskb in tqdm(train_data):
         img = imgb[0]
         mask = maskb[0]
+
         keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
         img = (img + 1)*127
         img = img.astype(np.uint8)

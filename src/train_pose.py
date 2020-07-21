@@ -4,7 +4,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 logging.getLogger("tensorflow").setLevel(logging.CRITICAL)
 logging.getLogger("tensorflow_hub").setLevel(logging.CRITICAL)
 
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, RMSprop, SGD
 from tensorflow.keras.losses import mse
 
 from . import datasets
@@ -72,9 +72,9 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     num_keypoints = train_iter.get_num_keypoints()
 
-    img_width = 480
-    img_height = 480
-    batch_size = 4
+    img_width = 224
+    img_height = 224
+    batch_size = 8
 
     model = modellib.create_pose_model(img_width, img_height, num_keypoints)
 

@@ -16,7 +16,7 @@ def merge(dsnames, outdir):
             counter += 1
             image = ds.get_image(image_id)
             all_keypoints = list(ds.get_keypoints(image_id))
-            image_path = f"{dsname}/{counter}.png"
+            image_path = f"{dsname}/{counter}.jpg"
             data_dict[image_path] = all_keypoints
             cv2.imwrite(outdir + image_path, image)
 

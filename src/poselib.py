@@ -2,16 +2,20 @@ import numpy as np
 import cv2
 
 class Pose:
-    __slots__ = 'R_Ankle','R_Knee',\
-                'R_Hip','L_Hip',\
-                'L_Knee','L_Ankle',\
-                'B_Pelvis','B_Spine',\
-                'B_Neck','B_Head',\
-                'R_Wrist','R_Elbow',\
-                'R_Shoulder','L_Shoulder',\
-                'L_Elbow','L_Wrist',\
-                'L_eye','L_ear',\
-                'R_eye','R_ear',\
-                'Nose'
+    head = 0
 
-    def
+    l_ankle = 1
+    l_knee = 2
+    l_shoulder = 3
+    l_wrist = 4
+    l_hip = 5
+    l_elbow = 6
+
+    r_ankle = 7
+    r_knee = 8
+    r_shoulder = 9
+    r_wrist = 10
+    r_hip = 11
+    r_elbow = 12
+
+    num_keypoints = 13
