@@ -130,18 +130,20 @@ class DisplayCallback(keras.callbacks.Callback):
 
 def lr_schedule():
     def lrs(epoch):
-        lrs = [0.001, 0.0001, 0.00005, 0.001, 0.0001, 0.00005, 0.00001]
-        if epoch < 150:
-            return lrs[(epoch // 5) % 7]
-        lrs = [0.0001, 0.00005, 0.001, 0.0001, 0.00005, 0.00001]
-        return lrs[(epoch // 5) % 6]
+        if epoch < 3:
+            return 0.001
+
+        lrs = [0.0001, 0.00005, 0.00005, 0.00001]
+        index = (epoch // 3) % 4
+        lr = lrs[index] / (2 ** (epoch//12))
+        return lr
 
     return keras.callbacks.LearningRateScheduler(lrs, verbose=True)
 
 def checkpoint(filepath):
     return keras.callbacks.ModelCheckpoint(filepath=filepath,
                                         monitor='val_loss',
-                                        save_best_only=True,
+                                        save_best_only=False,
                                         verbose=1)
 
 

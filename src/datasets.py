@@ -73,6 +73,7 @@ class PoseDataSource:
         for image_id in self.images_ids[:size]:
             yield image_id
 
+
     @staticmethod
     def annotation_format():
         return {PoseDataSource.ANNOTATIONS: [],

@@ -12,14 +12,7 @@ import segmentation_models as sm
 from . import  tflitemodel
 
 def get_model(model_path):
-    if model_path:
-        model = keras.models.load_model("pose_estimation.hdf5", custom_objects={"iou_score": sm.metrics.iou_score})
-
-    else:
-        model = keras.applications.mobilenet.MobileNet(alpha=0.5,
-                                                      include_top=False,
-                                                      input_shape=(352, 352, 3),
-                                                      weights=None)
+    model = keras.models.load_model(model_path)
     return model
 
 def model_compression_test(model, image):

@@ -41,6 +41,6 @@ def pose_model(img_width, img_height, num_keypoints):
                    input_shape=(img_width, img_height, 3),
                    encoder_weights='imagenet',
                    decoder_filters=(128, 64, 64),
-                   classes=num_keypoints * 3,
+                   classes=num_keypoints,
                    alpha=0.25)
     return unet

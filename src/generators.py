@@ -112,7 +112,7 @@ class PoseDataGenerator(keras.utils.Sequence):
         return g
 
     def make_keypoint_mask(self, all_keypoints, width, height):
-        keypoint_mask = np.zeros((self.mask_width, self.mask_height, self.num_keypoints*3), dtype=np.float32)
+        keypoint_mask = np.zeros((self.mask_width, self.mask_height, self.num_keypoints), dtype=np.float32)
 
         offset_x_max = self.img_width / self.mask_width
         offset_y_max = self.img_height / self.mask_height
@@ -165,13 +165,13 @@ class PoseDataGenerator(keras.utils.Sequence):
                               index] = self.gaussian[self.disc_size - left_space_y:self.disc_size + right_space_y,
                                                      self.disc_size - left_space_x:self.disc_size + right_space_x]
 
-                keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
-                              scaled_x - left_space_x: scaled_x + right_space_x,
-                              index + self.num_keypoints] = offset_x
-
-                keypoint_mask[scaled_y - left_space_y: scaled_y + left_space_y + 1,
-                              scaled_x - left_space_x: scaled_x + right_space_x + 1,
-                                index + 2 * self.num_keypoints] = offset_y
+                # keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
+                #               scaled_x - left_space_x: scaled_x + right_space_x,
+                #               index + self.num_keypoints] = 0
+                #
+                # keypoint_mask[scaled_y - left_space_y: scaled_y + left_space_y + 1,
+                #               scaled_x - left_space_x: scaled_x + right_space_x + 1,
+                #                 index + 2 * self.num_keypoints] = 0
 
 
         return keypoint_mask
@@ -220,7 +220,7 @@ class PoseDataGenerator(keras.utils.Sequence):
 
         # Create an empty batch of images and mask each
         imgb = np.zeros((self.batch_size, self.img_width, self.img_height, 3), dtype=np.float32)
-        maskb = np.zeros((self.batch_size, self.mask_width, self.mask_height, self.num_keypoints*3), dtype=np.float32)
+        maskb = np.zeros((self.batch_size, self.mask_width, self.mask_height, self.num_keypoints), dtype=np.float32)
 
         # Read filenames and fill the batch
         for index, sample in enumerate(batch):
@@ -240,17 +240,17 @@ class PoseDataGenerator(keras.utils.Sequence):
     def sample(self, i=0):
         return self[i]
 
+    def shuffle_dataset(self):
+        np.random.shuffle(self.data)
+
     def on_epoch_end(self):
         if self.shuffle:
-            np.random.shuffle(self.data)
+            self.shuffle_dataset()
 
     @staticmethod
     def get_keypoints_from_mask(mask, width, height):
-        num_keypoints = mask.shape[-1]//3
+        num_keypoints = mask.shape[-1]
         pred_keypoints = []
-
-        offset_x_max = width / mask.shape[0]
-        offset_y_max = height / mask.shape[1]
 
         for index in range(num_keypoints):
             frame = mask[:, :, index]
@@ -261,14 +261,9 @@ class PoseDataGenerator(keras.utils.Sequence):
             y_scaled = int(y*(width / mask.shape[1]))
 
             score = frame[keypoint]
-            frame = mask[:, :, index + num_keypoints]
-            offset_x = frame[keypoint]
 
-            frame = mask[:, :, index + 2 * num_keypoints]
-            offset_y = frame[keypoint]
-
-            pred_x = int(x_scaled + offset_x * offset_x_max)
-            pred_y = int(y_scaled + offset_y * offset_y_max)
+            pred_x = int(x_scaled)
+            pred_y = int(y_scaled)
 
             pred_keypoints.append([pred_x, pred_y, score])
 
@@ -299,6 +294,8 @@ class PoseDataGenerator(keras.utils.Sequence):
 
         image = image[image_height // 2 - new_height // 2: image_height // 2 + new_height // 2,
                 image_width // 2 - new_width // 2: image_width // 2 + new_width // 2]
+
+        image = cv2.resize(image, (width, height))
 
         return image
 
@@ -349,12 +346,12 @@ if __name__ == "__main__":
     num_keypoints = train_iter.get_num_keypoints()
     print(num_keypoints)
 
-    mask_shape = (15, 15)
+    mask_shape = (56, 56)
     mask_width, mask_height = mask_shape[0], mask_shape[1]
     print("Output image shape", mask_shape)
 
-    img_width = 352
-    img_height = 352
+    img_width = 224
+    img_height = 224
     batch_size = 1
 
     train_data = PoseDataGenerator(train_iter,
@@ -368,7 +365,7 @@ if __name__ == "__main__":
     for imgb, maskb in tqdm(train_data):
         img = imgb[0]
         mask = maskb[0]
-
+        #
         keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
         img = (img + 1)*127
         img = img.astype(np.uint8)

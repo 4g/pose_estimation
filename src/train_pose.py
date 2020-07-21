@@ -36,7 +36,7 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
                                  mask_width=mask_width,
                                  mask_height=mask_height,
                                  batch_size=batch_size,
-                                 shuffle=False)
+                                 shuffle=True)
 
     print(len(train_data), len(val_data))
 
@@ -67,6 +67,7 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     train_iter = datasets.get_dataset(train_ds)
     val_iter = datasets.get_dataset(val_ds)
+
     train_iter.set_size(sample_size)
     val_iter.set_size(sample_size)
 
@@ -101,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument("--prec", help="mixed precision mode (mixed_float16 / float32)", required=False, default="mixed_float16")
     parser.add_argument("--out", help="output file prefix for modelname", required=False, default="runs/model.")
     parser.add_argument("--train",  help="name of datasets to use for training", required=False, default="lip")
-    parser.add_argument("--val", help="name of datasets to use for training", required=False, default="lip_val")
+    parser.add_argument("--val", help="name of datasets to use for training", required=False, default="lsp")
     parser.add_argument("--sample", help="sample size, give small sample size to test code", required=False, default=None, type=int)
 
     args = parser.parse_args()

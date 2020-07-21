@@ -12,7 +12,7 @@ def test_pose(video, model_path):
     cam.start()
     while True:
         frame, count = cam.get()
-        frame, _ = PoseDataGenerator.pad(frame, [],  224, 224)
+        frame = PoseDataGenerator.crop(frame,  224, 224)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = frame / 127.5 - 1
         image = np.expand_dims(image, axis=0)
