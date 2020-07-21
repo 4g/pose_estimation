@@ -89,14 +89,13 @@ class PoseDataGenerator(keras.utils.Sequence):
         transform = A.Compose([
             A.ShiftScaleRotate(p=0.5),
             A.HorizontalFlip(p=0.5),
-            A.CenterCrop(height=352, width=352, p=0.5),
             A.OneOf([
                 A.HueSaturationValue(p=0.5),
                 A.RGBShift(p=0.7)
             ], p=1),
             A.RandomBrightnessContrast(p=0.5)
         ],
-            keypoint_params=A.KeypointParams(format='xy'),
+            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
         )
         self.transform = transform
 
@@ -114,9 +113,6 @@ class PoseDataGenerator(keras.utils.Sequence):
     def make_keypoint_mask(self, all_keypoints, width, height):
         keypoint_mask = np.zeros((self.mask_width, self.mask_height, self.num_keypoints), dtype=np.float32)
 
-        offset_x_max = self.img_width / self.mask_width
-        offset_y_max = self.img_height / self.mask_height
-
         for keypoints in all_keypoints:
             for index, keypoint in enumerate(keypoints):
                 x, y, v = keypoint
@@ -131,74 +127,48 @@ class PoseDataGenerator(keras.utils.Sequence):
                 scaled_x = int((x/width)*self.mask_width)
                 scaled_y = int((y/height)*self.mask_height)
 
-                offset_x = (x - scaled_x * width/self.mask_width) / offset_x_max
-                offset_y = (y - scaled_y * height/self.mask_height) / offset_y_max
-
-                # print(x, y, scaled_x, scaled_y, offset_x, offset_y)
-
                 left_space_x = min(scaled_x, self.disc_size)
                 left_space_y = min(scaled_y, self.disc_size)
 
                 right_space_x = min(self.mask_width - scaled_x, self.disc_size + 1)
                 right_space_y = min(self.mask_height - scaled_y, self.disc_size + 1)
 
-                ## debug start
-                # y_start = scaled_y - left_space_y
-                # x_start = scaled_x - left_space_x
-                # y_end = scaled_y + right_space_y
-                # x_end = scaled_x + right_space_x
-                #
-                # print("x", x, scaled_x, offset_x, left_space_x, right_space_x, x_start, x_end)
-                #
-                # print("y", y, scaled_y, offset_y, left_space_y, right_space_y, y_start, y_end)
-                #
-                # print(keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
-                #               scaled_x - left_space_x: scaled_x + right_space_x,
-                #               index].shape)
-                #
-                # print(self.gaussian[self.disc_size - left_space_y:self.disc_size + right_space_y,
-                #                                      self.disc_size - left_space_x:self.disc_size + right_space_x].shape)
-                # ## debug end
-
                 keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
                               scaled_x - left_space_x: scaled_x + right_space_x,
                               index] = self.gaussian[self.disc_size - left_space_y:self.disc_size + right_space_y,
                                                      self.disc_size - left_space_x:self.disc_size + right_space_x]
 
-                # keypoint_mask[scaled_y - left_space_y: scaled_y + right_space_y,
-                #               scaled_x - left_space_x: scaled_x + right_space_x,
-                #               index + self.num_keypoints] = 0
-                #
-                # keypoint_mask[scaled_y - left_space_y: scaled_y + left_space_y + 1,
-                #               scaled_x - left_space_x: scaled_x + right_space_x + 1,
-                #                 index + 2 * self.num_keypoints] = 0
-
-
         return keypoint_mask
 
     def get_img_mask(self, sample):
         img = self.poseiterator.get_image(sample)
-        keypoints = list(self.poseiterator.get_keypoints(sample))
+        instances = list(self.poseiterator.get_keypoints(sample))
+        num_instances = len(instances)
+        all_keypoints = []
+        for keypoints in instances:
+            all_keypoints.extend(keypoints)
 
+        bad_indices = []
+        good_keypoints = []
+        for index, keypoint in enumerate(all_keypoints):
+            good_keypoint = keypoint
+            if keypoint[0] <= 0 or keypoint[1] <= 0:
+                bad_indices.append(index)
+                good_keypoint = [0, 0, -1]
 
-        # transformed = self.transform(image=img, keypoints=keypoints[0])
-        # img = transformed['image']
-        # keypoints = [transformed['keypoints']]
+            good_keypoints.append(good_keypoint)
+
+        transformed = self.transform(image=img, keypoints=good_keypoints)
+        img = transformed['image']
+        all_keypoints = transformed['keypoints']
+
+        for index in bad_indices:
+            all_keypoints[index] = [-1, -1, -1]
+
+        keypoints = np.reshape(all_keypoints, (num_instances, self.num_keypoints, 3))
 
         img, keypoints = self.pad(img, keypoints, self.img_width, self.img_height)
         keypoint_mask = self.make_keypoint_mask(keypoints, self.img_width, self.img_height)
-
-
-        # debug start
-        # pred = np.asarray(self.get_keypoints_from_mask(keypoint_mask, self.img_width, self.img_height))[:, :2]
-        # orig = np.asarray(keypoints[0])[:, :2]
-        # orig[orig == 'nan'] = 0
-        # orig = orig.astype(np.int32)
-        # print("orig", orig)
-        # print("pred", pred)
-        # diff = (orig - pred).astype(np.int32)
-        # print("diff", diff)
-        # debug end
 
         img = self.preprocess_image(img, self.img_width, self.img_height)
 
@@ -366,9 +336,9 @@ if __name__ == "__main__":
         img = imgb[0]
         mask = maskb[0]
         #
-        keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
-        img = (img + 1)*127
-        img = img.astype(np.uint8)
-        img = train_data.draw_pose(img, keypoints)
-        cv2.imshow("img", img)
-        cv2.waitKey(-1)
+        # keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
+        # img = (img + 1)*127
+        # img = img.astype(np.uint8)
+        # img = train_data.draw_pose(img, keypoints)
+        # cv2.imshow("img", img)
+        # cv2.waitKey(-1)

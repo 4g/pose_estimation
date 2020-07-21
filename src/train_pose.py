@@ -30,6 +30,7 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
                                    batch_size=batch_size,
                                    shuffle=True)
 
+    train_data.shuffle_dataset()
     val_data = PoseDataGenerator(val_iter,
                                  img_width=img_width,
                                  img_height=img_height,
@@ -37,6 +38,8 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
                                  mask_height=mask_height,
                                  batch_size=batch_size,
                                  shuffle=True)
+
+    val_data.shuffle_dataset()
 
     print(len(train_data), len(val_data))
 
