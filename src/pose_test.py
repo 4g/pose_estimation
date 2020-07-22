@@ -12,21 +12,21 @@ def test_pose(video, model_path):
     cam.start()
     while True:
         frame, count = cam.get()
-        frame = PoseDataGenerator.crop(frame,  224, 224)
+        frame = PoseDataGenerator.crop(frame,  192, 192)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = frame / 127.5 - 1
         image = np.expand_dims(image, axis=0)
         output = model.predict(image)[0]
 
-        output[:,:,14:] = 0
-        compressed_output = np.sum(output[:,:,:19], axis=-1)
+
+        compressed_output = np.sum(output[:,:], axis=-1)
         # print(np.asarray(compressed_output*32, np.int32))
         compressed_output = compressed_output / np.max(compressed_output)
 
         compressed_output = np.asarray(compressed_output * 255, np.uint8)
 
         cv2.imshow("mask", compressed_output)
-        keypoints = PoseDataGenerator.get_keypoints_from_mask(output, 224, 224)
+        keypoints = PoseDataGenerator.get_keypoints_from_mask(output, 192, 192)
         for keypoint in keypoints:
             x, y, s = keypoint
             x = int(x)

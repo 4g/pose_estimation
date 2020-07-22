@@ -43,9 +43,7 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
 
     print(len(train_data), len(val_data))
 
-    callbacks = [checkpoint(model_path),
-                 lr_schedule(),
-                 tensorboard()]
+    callbacks = [checkpoint(model_path), lr_schedule(), tensorboard()]
 
     callbacks.append(DisplayCallback(train_data,
                     d_size=800,
@@ -76,9 +74,9 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     num_keypoints = train_iter.get_num_keypoints()
 
-    img_width = 224
-    img_height = 224
-    batch_size = 8
+    img_width = 192
+    img_height = 192
+    batch_size = 16
 
     model = modellib.create_pose_model(img_width, img_height, num_keypoints)
 

@@ -88,7 +88,6 @@ class PoseDataGenerator(keras.utils.Sequence):
         random.seed(7)
         transform = A.Compose([
             A.ShiftScaleRotate(p=0.5),
-            A.HorizontalFlip(p=0.5),
             A.OneOf([
                 A.HueSaturationValue(p=0.5),
                 A.RGBShift(p=0.7)

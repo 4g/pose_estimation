@@ -40,7 +40,7 @@ def pose_model(img_width, img_height, num_keypoints):
     unet = sm.Unet(backbone_name='mobilenet',
                    input_shape=(img_width, img_height, 3),
                    encoder_weights='imagenet',
-                   decoder_filters=(128, 64, 64),
+                   decoder_filters=(64, 16, 16),
                    classes=num_keypoints,
                    alpha=0.25)
     return unet
