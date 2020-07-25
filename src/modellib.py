@@ -1,11 +1,7 @@
-import tensorflow as tf
-from tensorflow import keras
 import segmentation_models as sm
 
 def create_pose_model(img_width, img_height, num_keypoints):
     return pose_model(img_width, img_height, num_keypoints)
-
-    # backbone_model = keras.applications.mobilenet_v2.MobileNetV2
     # backbone = backbone_model(input_shape=(img_width, img_height, 3),
     #                           include_top=False,
     #                           alpha=.5)
@@ -37,10 +33,14 @@ def create_pose_model(img_width, img_height, num_keypoints):
 
 
 def pose_model(img_width, img_height, num_keypoints):
-    unet = sm.Unet(backbone_name='mobilenet',
+    unet = sm.Unet(backbone_name='mobilenetv2',
                    input_shape=(img_width, img_height, 3),
                    encoder_weights='imagenet',
-                   decoder_filters=(64, 16, 16),
+                   decoder_filters=(32, 8, 8),
                    classes=num_keypoints,
-                   alpha=0.25)
+                   alpha=0.35)
     return unet
+
+if __name__ == '__main__':
+    model = pose_model(256, 256, 13)
+    print(model.summary())

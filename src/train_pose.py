@@ -6,6 +6,7 @@ logging.getLogger("tensorflow_hub").setLevel(logging.CRITICAL)
 
 from tensorflow.keras.optimizers import Adam, RMSprop, SGD
 from tensorflow.keras.losses import mse
+from tensorflow.keras.models import load_model
 
 from . import datasets
 from .callbacks import DisplayCallback, tensorboard, checkpoint, lr_schedule
@@ -14,8 +15,8 @@ from . import modellib
 
 def mixed_precision(prec):
     from tensorflow.keras.mixed_precision import experimental as mixed_precision
-    policy = mixed_precision.Policy(prec)
-    mixed_precision.set_policy(policy)
+    # policy = mixed_precision.Policy(prec)
+    # mixed_precision.set_policy(policy)
 
 def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs, model_path):
     mask_shape = model.output.shape[1:3]
@@ -55,9 +56,7 @@ def train(train_iter, val_iter, img_width, img_height, batch_size, model, epochs
               validation_data=val_data,
               epochs=epochs,
               callbacks=callbacks,
-              use_multiprocessing=False,
-              workers=1,
-              max_queue_size=10)
+              use_multiprocessing=False)
 
     model.save("pose_saved_model")
 
@@ -74,11 +73,12 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     num_keypoints = train_iter.get_num_keypoints()
 
-    img_width = 192
-    img_height = 192
-    batch_size = 16
+    img_width = 256
+    img_height = 256
+    batch_size = 8
 
     model = modellib.create_pose_model(img_width, img_height, num_keypoints)
+    # model = load_model('runs/all_merged_unet_5_rotate90_fp32_192_48.07-0.00286.hdf5')
 
     model.compile(optimizer=Adam(learning_rate=0.01),
                   loss=mse,
@@ -94,7 +94,7 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
           img_height=img_height,
           batch_size=batch_size,
           model=model,
-          epochs=100,
+          epochs=35,
           model_path=model_filename)
 
 if __name__ == '__main__':

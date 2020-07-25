@@ -87,12 +87,15 @@ class PoseDataGenerator(keras.utils.Sequence):
 
         random.seed(7)
         transform = A.Compose([
-            A.ShiftScaleRotate(p=0.5),
+            A.ShiftScaleRotate(p=0.5, border_mode=cv2.BORDER_REPLICATE),
+            A.RandomRotate90(p=0.3),
+            # A.RandomSnow(p=0.1),
+            # A.MotionBlur(p=0.1),
             A.OneOf([
-                A.HueSaturationValue(p=0.5),
-                A.RGBShift(p=0.7)
-            ], p=1),
-            A.RandomBrightnessContrast(p=0.5)
+                A.HueSaturationValue(p=0.3),
+                A.RGBShift(p=0.1)
+            ], p=0),
+            A.RandomBrightnessContrast(p=0.25),
         ],
             keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
         )
@@ -116,7 +119,7 @@ class PoseDataGenerator(keras.utils.Sequence):
             for index, keypoint in enumerate(keypoints):
                 x, y, v = keypoint
 
-                if v == -1 or x > self.img_height or y > self.img_width or x <= 0.0 or y <= 0.0:
+                if v == -1 or x > self.img_height or y > self.img_width or x <= self.disc_size or y <= self.disc_size:
                     continue
 
                 x, y = int(x), int(y)
@@ -143,6 +146,7 @@ class PoseDataGenerator(keras.utils.Sequence):
         img = self.poseiterator.get_image(sample)
         instances = list(self.poseiterator.get_keypoints(sample))
         num_instances = len(instances)
+
         all_keypoints = []
         for keypoints in instances:
             all_keypoints.extend(keypoints)
@@ -156,6 +160,7 @@ class PoseDataGenerator(keras.utils.Sequence):
                 good_keypoint = [0, 0, -1]
 
             good_keypoints.append(good_keypoint)
+
 
         transformed = self.transform(image=img, keypoints=good_keypoints)
         img = transformed['image']
@@ -310,17 +315,18 @@ if __name__ == "__main__":
     from . import datasets
 
     train_iter = datasets.get_dataset(args.dataset)
+
     # train_iter.set_size(10)
 
     num_keypoints = train_iter.get_num_keypoints()
     print(num_keypoints)
 
-    mask_shape = (56, 56)
+    mask_shape = (64, 64)
     mask_width, mask_height = mask_shape[0], mask_shape[1]
     print("Output image shape", mask_shape)
 
-    img_width = 224
-    img_height = 224
+    img_width = 256
+    img_height = 256
     batch_size = 1
 
     train_data = PoseDataGenerator(train_iter,
@@ -330,14 +336,15 @@ if __name__ == "__main__":
                                     mask_height=mask_height,
                                     batch_size=batch_size,
                                     shuffle=False)
+    train_data.shuffle_dataset()
 
     for imgb, maskb in tqdm(train_data):
         img = imgb[0]
         mask = maskb[0]
-        #
-        # keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
-        # img = (img + 1)*127
-        # img = img.astype(np.uint8)
-        # img = train_data.draw_pose(img, keypoints)
-        # cv2.imshow("img", img)
-        # cv2.waitKey(-1)
+
+        keypoints = train_data.get_keypoints_from_mask(mask, img_width, img_height)
+        img = (img + 1)*127
+        img = img.astype(np.uint8)
+        img = train_data.draw_pose(img, keypoints)
+        cv2.imshow("img", img)
+        cv2.waitKey(-1)

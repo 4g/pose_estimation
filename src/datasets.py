@@ -112,7 +112,10 @@ class PoseDataSource:
     def render_image(self, image_id):
         all_keypoints = self.get_keypoints(image_id)
         image = self.get_image(image_id)
-        for keypoints in all_keypoints:
+
+    @staticmethod
+    def draw_pose(image, instances):
+        for keypoints in instances:
             for keypoint in keypoints:
                 x, y, v = keypoint
                 if v == 'nan':
@@ -121,6 +124,7 @@ class PoseDataSource:
                 y = int(y)
                 cv2.circle(image, center=(x, y), radius=3, color=(255, 255, 255), thickness=-1)
         return image
+
 
     def get_num_keypoints(self):
         return self.num_keypoints
@@ -562,6 +566,14 @@ datasets = {
         "all_merged": (MergedDataSource,
                   "merged/all_merged/",
                   "merged/all_merged/"),
+
+        "all_merged_small": (MergedDataSource,
+                   "all_merged_small/",
+                   "all_merged_small/"),
+
+        "all_merged_256": (MergedDataSource,
+                         "all_merged_256/",
+                         "all_merged_256/"),
 }
 
 def get_dataset(name):

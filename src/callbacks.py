@@ -130,13 +130,14 @@ class DisplayCallback(keras.callbacks.Callback):
 
 def lr_schedule():
     def lrs(epoch):
-        if epoch < 4:
+        if epoch < 10:
             return 0.001
-
-        lrs = [0.0001, 0.00005, 0.00005, 0.00001]
-        index = ((epoch - 4) // 3) % 4
-        lr = lrs[index] / (2 ** ((epoch - 4) // 12))
-        return lr
+        if epoch < 20:
+            return 0.0001
+        if epoch < 30:
+            return 0.00001
+        else:
+            return 0.00001
 
     return keras.callbacks.LearningRateScheduler(lrs, verbose=True)
 
