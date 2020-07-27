@@ -19,3 +19,35 @@ class Pose:
     r_elbow = 12
 
     num_keypoints = 13
+
+    symmetric_pairs = [
+        (l_ankle, r_ankle),
+        (l_knee, r_knee),
+        (l_shoulder, r_shoulder),
+        (l_wrist, r_wrist),
+        (l_hip, r_hip),
+        (l_elbow, r_elbow),
+    ]
+
+    left_points = set()
+    right_points = set()
+
+    for i, j in symmetric_pairs:
+        left_points.add(i)
+        right_points.add(j)
+
+    neutral_points = (set(range(num_keypoints)) - left_points) - right_points
+
+    @staticmethod
+    def orientation(index):
+        """
+        returns -1 if left
+        returns 0 if neutral
+        returns 1 if right
+        """
+        if index in Pose.left_points:
+            return -1
+        if index in Pose.right_points:
+            return 1
+        if index in Pose.neutral_points:
+            return 0

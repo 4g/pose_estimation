@@ -4,6 +4,7 @@ import cv2
 from tqdm import tqdm
 import random
 import albumentations as A
+from .poselib import Pose
 
 class SegmentationDataGenerator(keras.utils.Sequence):
     """
@@ -89,6 +90,7 @@ class PoseDataGenerator(keras.utils.Sequence):
         transform = A.Compose([
             A.ShiftScaleRotate(p=0.5, border_mode=cv2.BORDER_REPLICATE),
             A.RandomRotate90(p=0.3),
+            A.RandomResizedCrop(width=self.img_width,  height=self.img_height, p=0.2, scale=(0.4, 1.0)),
             # A.RandomSnow(p=0.1),
             # A.MotionBlur(p=0.1),
             A.OneOf([
@@ -179,7 +181,10 @@ class PoseDataGenerator(keras.utils.Sequence):
         return img, keypoint_mask
 
     def draw_pose(self, image, keypoints, color=(0, 255, 0), radius=4):
-        for keypoint in keypoints:
+        colors = [(255,0,0), (0,255,0), (0,0,255)]
+        for index, keypoint in enumerate(keypoints):
+            color = colors[Pose.orientation(index)]
+
             x, y, s = keypoint
             x = int(x)
             y = int(y)
@@ -220,6 +225,20 @@ class PoseDataGenerator(keras.utils.Sequence):
     def on_epoch_end(self):
         if self.shuffle:
             self.shuffle_dataset()
+
+    def horizontal_flip_keypoints(self, keypoints, img_width):
+        pairs = Pose.symmetric_pairs
+        kp_copy = [i for i in keypoints]
+
+        for l, r in pairs:
+            lp = kp_copy[l]
+            rp = kp_copy[r]
+            lp_new = img_width - rp
+            rp_new = img_width - lp
+            kp_copy[l] = lp_new
+            kp_copy[r] = rp_new
+
+        return kp_copy
 
     @staticmethod
     def get_keypoints_from_mask(mask, width, height):

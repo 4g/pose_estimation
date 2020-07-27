@@ -75,10 +75,10 @@ def main(train_ds, val_ds, prec, model_prefix, sample_size):
 
     img_width = 256
     img_height = 256
-    batch_size = 8
+    batch_size = 32
 
     model = modellib.create_pose_model(img_width, img_height, num_keypoints)
-    # model = load_model('runs/all_merged_unet_5_rotate90_fp32_192_48.07-0.00286.hdf5')
+    model = load_model('runs/all_merged_clean_256_unet_mnv2_35_fp32_small_decoder.26-0.00212.hdf5')
 
     model.compile(optimizer=Adam(learning_rate=0.01),
                   loss=mse,

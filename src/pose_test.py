@@ -14,7 +14,7 @@ def extract_mask(output, start=0, end=None):
     return compressed_output
 
 def test_pose(video, model_path):
-    cam = camera.Camera(video, fps=30)
+    cam = camera.Camera(video, fps=100)
     model = keras.models.load_model(model_path)
 
     w, h = 256, 256
@@ -24,14 +24,15 @@ def test_pose(video, model_path):
     while True:
         frame, count = cam.get()
         # frame = cv2.transpose(frame)
-        frame, _ = PoseDataGenerator.pad(frame,[],  w, h)
+        # frame, _ = PoseDataGenerator.pad(frame,[], w, h)
+        frame = cv2.resize(frame, (w, h))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = frame / 127.5 - 1
         image = np.expand_dims(image, axis=0)
         output = model.predict(image)[0]
 
-        compressed_output_1 = extract_mask(output, 1, 13)
-        compressed_output_2 = extract_mask(output, 1, 13)
+        compressed_output_1 = extract_mask(output, 1, 7)
+        compressed_output_2 = extract_mask(output, 7, 13)
         compressed_output_3 = extract_mask(output, 0, 1)
         ow, oh = compressed_output_1.shape
 

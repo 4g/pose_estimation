@@ -12,7 +12,9 @@ class PoseDataSource:
     KEYPOINTS = 'keypoints'
     FILE_PATH = 'file_path'
     ANNOTATIONS = 'annotations'
-    order = [P.head, P.l_shoulder, P.r_shoulder, P.l_elbow, P.r_elbow, P.l_wrist, P.r_wrist, P.l_hip, P.r_hip, P.l_knee, P.r_knee, P.l_ankle, P.r_ankle]
+    order = [P.head, P.l_shoulder, P.r_shoulder, P.l_elbow, P.r_elbow, P.l_wrist, P.r_wrist, P.l_hip, P.r_hip, P.l_knee,
+             P.r_knee, P.l_ankle, P.r_ankle]
+
     def __init__(self, annotation_path, images_dir):
         self.images_dir = Path(images_dir)
         self.annotation_path = annotation_path
@@ -474,6 +476,8 @@ class MergedPosetrack(PoseDataSource):
         return keypoints
 
 class MergedDataSource(PoseDataSource):
+    order = [P.head, P.l_ankle, P.l_knee,  P.l_shoulder,  P.l_wrist,  P.l_hip,  P.l_elbow,
+             P.r_ankle, P.r_knee,  P.r_shoulder,  P.r_wrist,  P.r_hip,  P.r_elbow]
 
     def __init__(self, annotation_path, images_dir):
         super().__init__(annotation_path, images_dir)
